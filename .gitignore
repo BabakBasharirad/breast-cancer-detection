@@ -230,3 +230,5 @@ __pycache__/
 *.pkl
 *.pyc
 .DS_Store
+*.pdf
+.vscode/
