@@ -197,6 +197,38 @@ def check_class_balance(labels: pd.Series, logger: logging.Logger) -> None:
         logger.info(f"  {label_name}: {count} ({count / total * 100:.1f}%)")
 
 
+def load_gene_name_map(path: str) -> dict:
+    """
+    Load gene_id to gene_name mapping from JSON file.
+
+    Args:
+        path: Path to gene_name_mapping.json
+
+    Returns:
+        Dictionary mapping gene_id to gene_name.
+    """
+    import json
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Gene name mapping not found: {path}")
+    with open(path, "r") as f:
+        return json.load(f)
+
+
+def apply_gene_names(ids: list, gene_map: dict) -> list:
+    """
+    Replace Ensembl gene IDs with gene names where available.
+    Falls back to original ID if name not found.
+
+    Args:
+        ids      : List of Ensembl gene IDs.
+        gene_map : Dictionary mapping gene_id to gene_name.
+
+    Returns:
+        List of gene names.
+    """
+    return [gene_map.get(gid, gid) for gid in ids]
+
+
 def set_global_seed(seed: int) -> None:
     """
     Set the global random seed for reproducibility.

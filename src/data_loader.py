@@ -13,6 +13,7 @@ from config import (
     SAMPLES_DIR,
     SAMPLE_SHEET_PATH,
     FEATURE_MATRIX_RAW,
+    METRICS_DIR,
     TPM_COLUMN,
     SAMPLE_SHEET_FILE_ID_COL,
     SAMPLE_SHEET_SAMPLE_TYPE,
@@ -27,9 +28,13 @@ from utils import (
     save_dataframe,
     log_dataframe_info,
     check_class_balance,
+    ensure_dir,
 )
 
 logger = setup_logger(__name__)
+
+# Path to save gene_id -> gene_name mapping
+GENE_NAME_MAP_PATH = os.path.join(METRICS_DIR, "gene_name_mapping.json")
 
 
 # -----------------------------------------------------------------------------
@@ -126,6 +131,12 @@ def load_single_tsv(file_id: str, samples_dir: str = SAMPLES_DIR) -> pd.Series |
         # Set gene_id as index and extract TPM column
         df = df.set_index("gene_id")
 
+        # Save gene_id -> gene_name mapping AFTER setting index
+        if "gene_name" in df.columns:
+            gene_map = df["gene_name"].to_dict()
+        else:
+            gene_map = {}
+
         if TPM_COLUMN not in df.columns:
             logger.warning(f"Column '{TPM_COLUMN}' not found in: {tsv_path}")
             return None
@@ -133,7 +144,7 @@ def load_single_tsv(file_id: str, samples_dir: str = SAMPLES_DIR) -> pd.Series |
         tpm_series = df[TPM_COLUMN].astype(float)
         tpm_series.name = file_id
 
-        return tpm_series
+        return tpm_series, gene_map
 
     except Exception as e:
         logger.error(f"Failed to load {tsv_path}: {e}")
@@ -168,14 +179,19 @@ def build_feature_matrix(
 
     tpm_series_list = []
     valid_file_ids  = []
+    gene_name_map   = {}
 
     for _, row in tqdm(sample_sheet.iterrows(), total=len(sample_sheet), desc="Loading samples"):
-        file_id = row["file_id"]
-        series  = load_single_tsv(file_id, samples_dir)
+        file_id        = row["file_id"]
+        result         = load_single_tsv(file_id, samples_dir)
 
-        if series is not None:
+        if result is not None:
+            series, gene_map = result
             tpm_series_list.append(series)
             valid_file_ids.append(file_id)
+            # Collect gene name mapping from first successful load
+            if not gene_name_map and gene_map:
+                gene_name_map = gene_map
 
     if len(tpm_series_list) == 0:
         raise RuntimeError("No samples were successfully loaded. Check your SAMPLES_DIR path.")
@@ -198,6 +214,14 @@ def build_feature_matrix(
 
     log_dataframe_info(X, "Feature matrix (raw)", logger)
     check_class_balance(y, logger)
+
+    # Save gene name mapping
+    if gene_name_map:
+        import json
+        ensure_dir(os.path.dirname(GENE_NAME_MAP_PATH))
+        with open(GENE_NAME_MAP_PATH, "w") as f:
+            json.dump(gene_name_map, f, indent=2)
+        logger.info(f"Gene name mapping saved to: {GENE_NAME_MAP_PATH}")
 
     # Save interim feature matrix
     if save_interim:

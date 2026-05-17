@@ -24,10 +24,20 @@ from sklearn.inspection import permutation_importance
 from config import (
     FIGURES_DIR,
     METRICS_DIR,
+    RESULTS_DIR,
     N_TOP_IMPORTANT_FEATURES,
     RANDOM_STATE,
 )
-from utils import setup_logger, ensure_dir
+from utils import setup_logger, ensure_dir, load_gene_name_map, apply_gene_names
+
+GENE_NAME_MAP_PATH = os.path.join(RESULTS_DIR, "metrics", "gene_name_mapping.json")
+
+def _get_gene_map():
+    """Load gene name map, return empty dict if not found."""
+    try:
+        return load_gene_name_map(GENE_NAME_MAP_PATH)
+    except FileNotFoundError:
+        return {}
 
 logger = setup_logger(__name__)
 
@@ -77,13 +87,15 @@ def compute_mdi_importance(
     """
     logger.info("Computing MDI (Mean Decrease in Impurity) feature importance...")
 
+    gene_map    = _get_gene_map()
     importances = model.feature_importances_
     std         = np.std(
         [tree.feature_importances_ for tree in model.estimators_], axis=0
     )
 
     df = pd.DataFrame({
-        "gene"      : feature_names,
+        "gene"      : apply_gene_names(feature_names, gene_map),
+        "gene_id"   : feature_names,
         "importance": importances,
         "std"       : std,
     }).sort_values("importance", ascending=False).reset_index(drop=True)
@@ -150,8 +162,10 @@ def compute_permutation_importance(
         n_jobs=-1,
     )
 
+    gene_map = _get_gene_map()
     df = pd.DataFrame({
-        "gene"      : X_test.columns.tolist(),
+        "gene"      : apply_gene_names(X_test.columns.tolist(), gene_map),
+        "gene_id"   : X_test.columns.tolist(),
         "importance": result.importances_mean,
         "std"       : result.importances_std,
     }).sort_values("importance", ascending=False).reset_index(drop=True)
@@ -205,35 +219,38 @@ def compute_shap_values(
     logger.info("Computing SHAP values (TreeExplainer)...")
     logger.info("  This may take a few minutes for large feature sets...")
 
-    explainer   = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X_test)
+    # Load gene name mapping first
+    gene_map = _get_gene_map()
 
-    # Handle different shap output formats across versions
-    if isinstance(shap_values, list):
-        shap_vals_positive = shap_values[1]
-    elif hasattr(shap_values, "values"):
-        vals = shap_values.values
-        shap_vals_positive = vals[:, :, 1] if vals.ndim == 3 else vals
+    # Use newer shap Explanation API for compatibility with shap >= 0.40
+    explainer_obj    = shap.TreeExplainer(model)
+    shap_explanation = explainer_obj(X_test)
+
+    # Extract SHAP values for positive class (tumor)
+    # shap_explanation.values shape: (samples, features, classes)
+    if shap_explanation.values.ndim == 3:
+        shap_vals_positive = shap_explanation.values[:, :, 1]
+        base_val_positive  = shap_explanation.base_values[:, 1] if shap_explanation.base_values.ndim == 2 else shap_explanation.base_values
     else:
-        shap_vals_positive = shap_values
+        shap_vals_positive = shap_explanation.values
+        base_val_positive  = shap_explanation.base_values
 
-    # Ensure 2D (samples x features)
-    if shap_vals_positive.ndim != 2:
-        shap_vals_positive = np.squeeze(shap_vals_positive)
-
-    # Debug shape
     logger.info(f"shap_vals_positive shape: {shap_vals_positive.shape}")
-    logger.info(f"shap_vals_positive ndim: {shap_vals_positive.ndim}")
+
+    # Build Explanation object for positive class only (for summary_plot)
+    shap_exp_positive = shap.Explanation(
+        values        = shap_vals_positive,
+        base_values   = base_val_positive,
+        data          = X_test.values,
+        feature_names = apply_gene_names(X_test.columns.tolist(), gene_map),
+    )
 
     # Mean absolute SHAP value per gene
     mean_abs_shap = np.abs(shap_vals_positive).mean(axis=0)
-    # If still 2D (newer shap returns both classes), take positive class
-    if mean_abs_shap.ndim == 2:
-        mean_abs_shap = mean_abs_shap[:, 1]
-    logger.info(f"mean_abs_shap shape: {mean_abs_shap.shape}")
     df = pd.DataFrame({
-        "gene"            : X_test.columns.tolist(),
-        "mean_abs_shap"   : mean_abs_shap,
+        "gene"          : apply_gene_names(X_test.columns.tolist(), gene_map),
+        "gene_id"       : X_test.columns.tolist(),
+        "mean_abs_shap" : mean_abs_shap,
     }).sort_values("mean_abs_shap", ascending=False).reset_index(drop=True)
 
     # Save full SHAP importance table
@@ -243,36 +260,39 @@ def compute_shap_values(
 
     # --- SHAP Summary Dot Plot ---
     ensure_dir(FIGURES_DIR)
-    plt.figure(figsize=(10, 8))
-    shap.summary_plot(
-        shap_vals_positive,
-        X_test,
+    fig, ax = plt.subplots(figsize=(12, 10))
+    plt.sca(ax)
+    shap.plots.beeswarm(
+        shap_exp_positive,
         max_display=n_top,
         show=False,
-        plot_type="dot",
     )
-    plt.title(
+    ax.set_title(
         f"SHAP Summary Plot — Top {n_top} Genes (Tumor Class)",
-        fontsize=13, fontweight="bold"
+        fontsize=13, fontweight="bold", pad=15
     )
     plt.tight_layout()
     plt.savefig(SHAP_SUMMARY_FILE, dpi=PLOT_DPI, format=PLOT_FORMAT, bbox_inches="tight")
     plt.close()
     logger.info(f"SHAP summary plot saved to: {SHAP_SUMMARY_FILE}")
 
-    # --- SHAP Bar Plot ---
-    plt.figure(figsize=(10, 8))
-    shap.summary_plot(
-        shap_vals_positive,
-        X_test,
-        max_display=n_top,
-        show=False,
-        plot_type="bar",
+    # --- SHAP Bar Plot (custom, using mean abs SHAP) ---
+    top_df  = df.head(n_top).iloc[::-1]  # reverse for horizontal bar
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.barh(
+        top_df["gene"],
+        top_df["mean_abs_shap"],
+        color="steelblue",
+        alpha=0.85,
+        edgecolor="white",
     )
-    plt.title(
+    ax.set_xlabel("Mean |SHAP Value|", fontsize=12)
+    ax.set_ylabel("Gene",             fontsize=12)
+    ax.set_title(
         f"SHAP Feature Importance — Top {n_top} Genes (Mean |SHAP|)",
         fontsize=13, fontweight="bold"
     )
+    ax.tick_params(axis="y", labelsize=8)
     plt.tight_layout()
     plt.savefig(SHAP_BAR_FILE, dpi=PLOT_DPI, format=PLOT_FORMAT, bbox_inches="tight")
     plt.close()
