@@ -29,7 +29,15 @@ from sklearn.decomposition import PCA
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import config
-from utils import setup_logger, ensure_dir, load_dataframe
+from utils import setup_logger, ensure_dir, load_dataframe, load_gene_name_map, apply_gene_names
+
+GENE_NAME_MAP_PATH = os.path.join(config.RESULTS_DIR, "metrics", "gene_name_mapping.json")
+
+def _get_gene_map():
+    try:
+        return load_gene_name_map(GENE_NAME_MAP_PATH)
+    except FileNotFoundError:
+        return {}
 
 logger = setup_logger(
     "run_data_exploration",
@@ -197,8 +205,10 @@ def plot_expression_heatmap(
     ensure_dir(EXPLORATION_DIR)
 
     # Select top N most variable genes
+    gene_map   = _get_gene_map()
     top_genes  = X.var(axis=0).nlargest(n_genes).index
-    X_top      = X[top_genes]
+    X_top      = X[top_genes].copy()
+    X_top.columns = apply_gene_names(X_top.columns.tolist(), gene_map)
 
     # Sort samples by class (normal first, tumor second)
     sort_idx   = y.sort_values().index
