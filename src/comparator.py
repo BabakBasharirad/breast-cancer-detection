@@ -78,6 +78,21 @@ STRATEGY_COLORS = {
     "smotetomek"   : "#16a085",
 }
 
+# Display labels for plots (paper-ready formatting)
+STRATEGY_LABELS = {
+    "none"         : "None (Baseline)",
+    "class_weight" : "Class Weight",
+    "random_over"  : "Random Over",
+    "random_under" : "Random Under",
+    "smote"        : "SMOTE",
+    "smoteenn"     : "SMOTEENN",
+    "smotetomek"   : "SMOTETomek",
+}
+
+def get_labels(strategies):
+    """Convert strategy keys to display labels."""
+    return [STRATEGY_LABELS.get(s, s) for s in strategies]
+
 CV_SCORING = {
     "accuracy" : make_scorer(accuracy_score),
     "precision": make_scorer(precision_score, zero_division=0),
@@ -303,7 +318,7 @@ def plot_roc_curve_per_strategy(
         ax.set_xlim([0, 1]); ax.set_ylim([0, 1.05])
         ax.set_xlabel("False Positive Rate", fontsize=11)
         ax.set_ylabel("True Positive Rate",  fontsize=11)
-        ax.set_title(f"ROC Curve — {strategy}", fontsize=12, fontweight="bold")
+        ax.set_title(f"ROC Curve — {STRATEGY_LABELS.get(strategy, strategy)}", fontsize=12, fontweight="bold")
         ax.legend(loc="lower right", fontsize=10)
         plt.tight_layout()
 
@@ -333,7 +348,7 @@ def plot_precision_recall_per_strategy(
         ax.set_xlim([0, 1]); ax.set_ylim([0, 1.05])
         ax.set_xlabel("Recall",    fontsize=11)
         ax.set_ylabel("Precision", fontsize=11)
-        ax.set_title(f"Precision-Recall Curve — {strategy}", fontsize=12, fontweight="bold")
+        ax.set_title(f"Precision-Recall Curve — {STRATEGY_LABELS.get(strategy, strategy)}", fontsize=12, fontweight="bold")
         ax.legend(loc="upper right", fontsize=10)
         plt.tight_layout()
 
@@ -352,18 +367,32 @@ def plot_combined_roc_curves(
     y_test: pd.Series,
     predictions: dict,
 ) -> None:
-    """Plot all strategies' ROC curves in one figure."""
+    """Plot all strategies ROC curves in one figure with distinct line styles."""
     ensure_dir(COMPARISON_DIR)
     logger.info("Plotting combined ROC curves...")
 
-    fig, ax = plt.subplots(figsize=(9, 7))
+    # Distinct line styles and widths for each strategy
+    LINE_STYLES = {
+        "none"         : ("solid",   2.0),
+        "class_weight" : ("dashed",  2.0),
+        "random_over"  : ("dotted",  2.5),
+        "random_under" : ("dashdot", 2.0),
+        "smote"        : ((0,(5,2)), 2.0),
+        "smoteenn"     : ((0,(3,1,1,1)), 2.5),
+        "smotetomek"   : ((0,(5,1,1,1,1,1)), 2.0),
+    }
+
+    fig, ax = plt.subplots(figsize=(10, 7))
     sns.set_style(PLOT_STYLE)
 
     for strategy, preds in predictions.items():
         fpr, tpr, _ = roc_curve(y_test, preds["y_prob"])
         auc         = roc_auc_score(y_test, preds["y_prob"])
-        ax.plot(fpr, tpr, color=STRATEGY_COLORS.get(strategy, "gray"),
-                lw=2, label=f"{strategy} (AUC={auc:.3f})")
+        ls, lw      = LINE_STYLES.get(strategy, ("solid", 2.0))
+        ax.plot(fpr, tpr,
+                color=STRATEGY_COLORS.get(strategy, "gray"),
+                linestyle=ls, linewidth=lw,
+                label=f"{STRATEGY_LABELS.get(strategy, strategy)} (AUC={auc:.3f})")
 
     ax.plot([0, 1], [0, 1], "k--", lw=1.5, label="Random")
     ax.set_xlim([0, 0.1]); ax.set_ylim([0.95, 1.001])
@@ -394,7 +423,7 @@ def plot_combined_pr_curves(
         precision, recall, _ = precision_recall_curve(y_test, preds["y_prob"])
         ap = average_precision_score(y_test, preds["y_prob"])
         ax.plot(recall, precision, color=STRATEGY_COLORS.get(strategy, "gray"),
-                lw=2, label=f"{strategy} (AP={ap:.3f})")
+                lw=2, label=f"{STRATEGY_LABELS.get(strategy, strategy)} (AP={ap:.3f})")
 
     ax.set_xlim([0.95, 1.001]); ax.set_ylim([0.95, 1.001])
     ax.set_xlabel("Recall",    fontsize=12)
@@ -446,7 +475,7 @@ def plot_metric_bar_charts(
                     f"{bar.get_height():.3f}", ha="center", va="bottom", fontsize=8, color="darkorange")
 
         ax.set_xticks(x)
-        ax.set_xticklabels(strategies, rotation=25, ha="right", fontsize=10)
+        ax.set_xticklabels(get_labels(strategies), rotation=25, ha="right", fontsize=10)
         ymin = max(0, min(np.min(cv_means - cv_stds), np.min(test_vals)) - 0.02)
         ax.set_ylim([ymin, 1.05])
         ax.set_ylabel(METRIC_LABELS[metric], fontsize=12)
@@ -494,7 +523,7 @@ def plot_cv_boxplots(cv_raw_scores: dict) -> None:
             patch.set_alpha(0.75)
 
         ax.set_xticks(range(1, len(strategy_labels) + 1))
-        ax.set_xticklabels(strategy_labels, rotation=25, ha="right", fontsize=10)
+        ax.set_xticklabels(get_labels(strategy_labels), rotation=25, ha="right", fontsize=10)
         all_vals = [v for scores in data for v in scores]
         ymin = max(0, min(all_vals) - 0.02)
         ax.set_ylim([ymin, 1.02])
@@ -518,7 +547,9 @@ def plot_heatmap_comparison(df_test: pd.DataFrame) -> None:
     ensure_dir(COMPARISON_DIR)
     logger.info("Plotting metrics heatmap...")
 
-    df_heat = df_test.set_index("strategy")[METRICS].rename(columns=METRIC_LABELS)
+    df_test_display = df_test.copy()
+    df_test_display["strategy"] = df_test_display["strategy"].map(STRATEGY_LABELS)
+    df_heat = df_test_display.set_index("strategy")[METRICS].rename(columns=METRIC_LABELS)
 
     fig, ax = plt.subplots(figsize=(9, 6))
     sns.set_style("white")

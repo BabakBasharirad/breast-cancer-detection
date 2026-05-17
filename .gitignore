@@ -232,3 +232,4 @@ __pycache__/
 .DS_Store
 *.pdf
 .vscode/
+check_versions.py

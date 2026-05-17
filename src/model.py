@@ -203,8 +203,14 @@ def compare_balancing_strategies(
 
 def select_best_strategy(cv_results: pd.DataFrame) -> str:
     """
-    Select the best balancing strategy based on the highest mean AUC-ROC
-    from cross-validation results.
+    Select the best balancing strategy using a multi-criteria tie-breaking
+    approach based on cross-validation results only (no test set used).
+
+    Tie-breaking order:
+        1. Highest CV AUC-ROC mean (primary metric)
+        2. Highest CV F1 mean
+        3. Lowest CV AUC-ROC std (most stable)
+        4. Highest CV Recall mean (important in medical classification)
 
     Args:
         cv_results : DataFrame from compare_balancing_strategies().
@@ -212,24 +218,38 @@ def select_best_strategy(cv_results: pd.DataFrame) -> str:
     Returns:
         Name of the best balancing strategy.
     """
-    best_row      = cv_results.iloc[0]
+    df = cv_results.copy()
+
+    # Sort by multiple criteria: AUC desc, F1 desc, AUC std asc, Recall desc
+    df = df.sort_values(
+        by=["roc_auc_mean", "f1_mean", "roc_auc_std", "recall_mean"],
+        ascending=[False, False, True, False]
+    ).reset_index(drop=True)
+
+    best_row      = df.iloc[0]
     best_strategy = best_row["strategy"]
-    best_auc      = best_row[f"{BEST_STRATEGY_METRIC}_mean"]
+    best_auc      = best_row["roc_auc_mean"]
     best_f1       = best_row["f1_mean"]
+    best_auc_std  = best_row["roc_auc_std"]
+    best_recall   = best_row["recall_mean"]
 
     logger.info("=" * 60)
     logger.info(f"BEST STRATEGY: '{best_strategy}'")
-    logger.info(f"  AUC-ROC : {best_auc:.4f}")
+    logger.info(f"  AUC-ROC : {best_auc:.4f} (std: {best_auc_std:.4f})")
     logger.info(f"  F1 Score: {best_f1:.4f}")
+    logger.info(f"  Recall  : {best_recall:.4f}")
+    logger.info("  Selection criteria: AUC-ROC > F1 > AUC std > Recall")
     logger.info("=" * 60)
 
     # Save best strategy info
     best_info = {
-        "best_strategy"              : best_strategy,
-        "selection_metric"           : BEST_STRATEGY_METRIC,
-        f"{BEST_STRATEGY_METRIC}_mean": best_auc,
-        "f1_mean"                    : best_f1,
-        "all_results"                : cv_results.to_dict(orient="records"),
+        "best_strategy"   : best_strategy,
+        "selection_metric": "multi-criteria (AUC-ROC, F1, AUC std, Recall)",
+        "roc_auc_mean"    : best_auc,
+        "roc_auc_std"     : best_auc_std,
+        "f1_mean"         : best_f1,
+        "recall_mean"     : best_recall,
+        "all_results"     : df.to_dict(orient="records"),
     }
 
     ensure_dir(METRICS_DIR)
