@@ -93,9 +93,9 @@ def select_top_n_by_variance(
     return top_genes
 
 
-# -----------------------------------------------------------------------------
-# Step 3: Mutual Information (Optional)
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# Additional Optional Step: Mutual Information (This method is not applied in this experiment.)
+# ----------------------------------------------------------------------------------------------
 
 def select_top_n_by_mutual_info(
     X_train: pd.DataFrame,
