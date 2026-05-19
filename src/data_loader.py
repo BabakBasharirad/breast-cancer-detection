@@ -124,9 +124,17 @@ def load_single_tsv(file_id: str, samples_dir: str = SAMPLES_DIR) -> pd.Series |
             comment="#",
         )
 
+        # Capture total gene count before protein-coding filter
+        n_genes_total = len(df)
+
         # Filter to protein-coding genes only (if configured)
         if GENE_TYPE_FILTER and "gene_type" in df.columns:
             df = df[df["gene_type"] == GENE_TYPE_FILTER]
+            n_genes_protein_coding = len(df)
+            logger.debug(f"  Genes before protein-coding filter: {n_genes_total:,}")
+            logger.debug(f"  Genes after  protein-coding filter: {n_genes_protein_coding:,}")
+        else:
+            n_genes_protein_coding = n_genes_total
 
         # Set gene_id as index and extract TPM column
         df = df.set_index("gene_id")
@@ -144,7 +152,7 @@ def load_single_tsv(file_id: str, samples_dir: str = SAMPLES_DIR) -> pd.Series |
         tpm_series = df[TPM_COLUMN].astype(float)
         tpm_series.name = file_id
 
-        return tpm_series, gene_map
+        return tpm_series, gene_map, n_genes_total, n_genes_protein_coding
 
     except Exception as e:
         logger.error(f"Failed to load {tsv_path}: {e}")
@@ -177,21 +185,25 @@ def build_feature_matrix(
     logger.info("Building feature matrix from raw TSV files...")
     logger.info(f"Total samples to process: {len(sample_sheet)}")
 
-    tpm_series_list = []
-    valid_file_ids  = []
-    gene_name_map   = {}
+    tpm_series_list    = []
+    valid_file_ids     = []
+    gene_name_map      = {}
+    n_genes_total      = 0
+    n_genes_prot_coding = 0
 
     for _, row in tqdm(sample_sheet.iterrows(), total=len(sample_sheet), desc="Loading samples"):
         file_id        = row["file_id"]
         result         = load_single_tsv(file_id, samples_dir)
 
         if result is not None:
-            series, gene_map = result
+            series, gene_map, n_total, n_prot = result
             tpm_series_list.append(series)
             valid_file_ids.append(file_id)
-            # Collect gene name mapping from first successful load
+            # Collect gene name mapping and counts from first successful load
             if not gene_name_map and gene_map:
-                gene_name_map = gene_map
+                gene_name_map       = gene_map
+                n_genes_total       = n_total
+                n_genes_prot_coding = n_prot
 
     if len(tpm_series_list) == 0:
         raise RuntimeError("No samples were successfully loaded. Check your SAMPLES_DIR path.")
@@ -222,6 +234,20 @@ def build_feature_matrix(
         with open(GENE_NAME_MAP_PATH, "w") as f:
             json.dump(gene_name_map, f, indent=2)
         logger.info(f"Gene name mapping saved to: {GENE_NAME_MAP_PATH}")
+
+    # Save gene count summary
+    import json
+    gene_count_summary = {
+        "n_genes_raw"           : n_genes_total,
+        "n_genes_protein_coding": n_genes_prot_coding,
+    }
+    gene_count_path = os.path.join(METRICS_DIR, "gene_count_summary.json")
+    ensure_dir(METRICS_DIR)
+    with open(gene_count_path, "w") as f:
+        json.dump(gene_count_summary, f, indent=2)
+    logger.info(f"Gene count summary saved to: {gene_count_path}")
+    logger.info(f"  Total genes (raw)          : {n_genes_total:,}")
+    logger.info(f"  Protein-coding genes       : {n_genes_prot_coding:,}")
 
     # Save interim feature matrix
     if save_interim:
