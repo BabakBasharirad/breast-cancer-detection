@@ -1,0 +1,8 @@
+{
+    "real_score": 0.9988,
+    "mean_permuted_score": 0.5034,
+    "std_permuted_score": 0.0609,
+    "p_value": 0.0,
+    "n_permutations": 1000,
+    "significant": true
+}

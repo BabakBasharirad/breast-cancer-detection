@@ -1,0 +1,4 @@
+# Genes appearing in top 20 across MDI, Permutation, and SHAP
+CAVIN2
+CD300LG
+ITIH5

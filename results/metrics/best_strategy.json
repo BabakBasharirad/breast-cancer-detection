@@ -1,0 +1,101 @@
+{
+    "best_strategy": "smoteenn",
+    "selection_metric": "multi-criteria (AUC-ROC, F1, AUC std, Recall)",
+    "roc_auc_mean": 1.0,
+    "roc_auc_std": 0.0,
+    "f1_mean": 1.0,
+    "recall_mean": 1.0,
+    "all_results": [
+        {
+            "strategy": "smoteenn",
+            "accuracy_mean": 1.0,
+            "accuracy_std": 0.0,
+            "precision_mean": 1.0,
+            "precision_std": 0.0,
+            "recall_mean": 1.0,
+            "recall_std": 0.0,
+            "f1_mean": 1.0,
+            "f1_std": 0.0,
+            "roc_auc_mean": 1.0,
+            "roc_auc_std": 0.0
+        },
+        {
+            "strategy": "random_over",
+            "accuracy_mean": 0.9989,
+            "accuracy_std": 0.0014,
+            "precision_mean": 1.0,
+            "precision_std": 0.0,
+            "recall_mean": 0.9978,
+            "recall_std": 0.0027,
+            "f1_mean": 0.9989,
+            "f1_std": 0.0014,
+            "roc_auc_mean": 1.0,
+            "roc_auc_std": 0.0
+        },
+        {
+            "strategy": "smote",
+            "accuracy_mean": 0.9989,
+            "accuracy_std": 0.0014,
+            "precision_mean": 1.0,
+            "precision_std": 0.0,
+            "recall_mean": 0.9978,
+            "recall_std": 0.0027,
+            "f1_mean": 0.9989,
+            "f1_std": 0.0014,
+            "roc_auc_mean": 1.0,
+            "roc_auc_std": 0.0
+        },
+        {
+            "strategy": "smotetomek",
+            "accuracy_mean": 0.9989,
+            "accuracy_std": 0.0014,
+            "precision_mean": 1.0,
+            "precision_std": 0.0,
+            "recall_mean": 0.9978,
+            "recall_std": 0.0027,
+            "f1_mean": 0.9989,
+            "f1_std": 0.0014,
+            "roc_auc_mean": 1.0,
+            "roc_auc_std": 0.0
+        },
+        {
+            "strategy": "random_under",
+            "accuracy_mean": 0.9833,
+            "accuracy_std": 0.0136,
+            "precision_mean": 0.9895,
+            "precision_std": 0.0211,
+            "recall_mean": 0.9778,
+            "recall_std": 0.0272,
+            "f1_mean": 0.9832,
+            "f1_std": 0.0138,
+            "roc_auc_mean": 1.0,
+            "roc_auc_std": 0.0
+        },
+        {
+            "strategy": "class_weight",
+            "accuracy_mean": 0.9929,
+            "accuracy_std": 0.0052,
+            "precision_mean": 0.9934,
+            "precision_std": 0.0064,
+            "recall_mean": 0.9989,
+            "recall_std": 0.0022,
+            "f1_mean": 0.9961,
+            "f1_std": 0.0028,
+            "roc_auc_mean": 0.9996,
+            "roc_auc_std": 0.0004
+        },
+        {
+            "strategy": "none",
+            "accuracy_mean": 0.9909,
+            "accuracy_std": 0.0059,
+            "precision_mean": 0.9922,
+            "precision_std": 0.0056,
+            "recall_mean": 0.9978,
+            "recall_std": 0.0045,
+            "f1_mean": 0.995,
+            "f1_std": 0.0032,
+            "roc_auc_mean": 0.9994,
+            "roc_auc_std": 0.0007
+        }
+    ]
+}

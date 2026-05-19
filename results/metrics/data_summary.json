@@ -1,0 +1,16 @@
+{
+    "total_samples": 1231,
+    "total_tumor": 1118,
+    "total_normal": 113,
+    "train_samples": 984,
+    "train_tumor": 894,
+    "train_normal": 90,
+    "test_samples": 247,
+    "test_tumor": 224,
+    "test_normal": 23,
+    "n_genes_before_filter": 19962,
+    "n_genes_after_filter": 16983,
+    "n_features_selected": 2000,
+    "train_test_split": "80/20 stratified",
+    "cv_folds": 5
+}
