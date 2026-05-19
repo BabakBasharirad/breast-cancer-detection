@@ -506,7 +506,7 @@ def plot_cv_boxplots(cv_raw_scores: dict) -> None:
             data.append(scores[metric])
             strategy_labels.append(strategy)
 
-        fig, ax = plt.subplots(figsize=(12, 6))
+        fig, ax = plt.subplots(figsize=(12, 4.5))
         sns.set_style(PLOT_STYLE)
 
         bp = ax.boxplot(
@@ -525,8 +525,8 @@ def plot_cv_boxplots(cv_raw_scores: dict) -> None:
         ax.set_xticks(range(1, len(strategy_labels) + 1))
         ax.set_xticklabels(get_labels(strategy_labels), rotation=25, ha="right", fontsize=10)
         all_vals = [v for scores in data for v in scores]
-        ymin = max(0, min(all_vals) - 0.02)
-        ax.set_ylim([ymin, 1.02])
+        ymin = max(0, min(all_vals) - 0.01)
+        ax.set_ylim([ymin, 1.01])
         ax.set_ylabel(METRIC_LABELS[metric], fontsize=12)
         ax.set_title(f"{METRIC_LABELS[metric]} — CV Fold Distribution per Strategy",
                      fontsize=13, fontweight="bold")
