@@ -175,9 +175,26 @@ tqdm==4.67.1
 
 ## Data Preparation
 
-1. Download the TCGA-BRCA RNA-Seq dataset from the [GDC Portal](https://portal.gdc.cancer.gov/) using the query parameters listed above
-2. Place the downloaded TSV files in `_raw_data/samples/` (one subfolder per file UUID)
-3. Place the GDC sample sheet at `_raw_data/gdc_sample_sheet.tsv`
+The raw data can be obtained in two ways:
+
+### Option 1 — Using the GDC Data Transfer Tool (Recommended)
+
+A GDC manifest file (`_raw_data/gdc_manifest.txt`) and sample sheet (`_raw_data/gdc_sample_sheet.tsv`) are provided in this repository to allow exact reproduction of the dataset used in this study.
+
+1. Install the [GDC Data Transfer Tool](https://gdc.cancer.gov/access-data/gdc-data-transfer-tool)
+2. Run the following command from the project root:
+
+```bash
+gdc-client download -m _raw_data/gdc_manifest.txt -d _raw_data/samples/
+```
+
+3. This will download all 1,231 TSV files into `_raw_data/samples/`, with one subfolder per file UUID.
+
+### Option 2 — Manual Download from GDC Portal
+
+1. Go to the [GDC Portal](https://portal.gdc.cancer.gov/)
+2. Apply the query parameters listed in the Dataset section above
+3. Download the files and place them in `_raw_data/samples/` (one subfolder per file UUID)
 
 ---
 
@@ -253,7 +270,7 @@ If you use this code or results in your research, please cite:
 
 ```
 Basharirad, B. (2025). Impact of Class Imbalance Handling on Machine Learning-Based 
-Breast Cancer Classification Using Gene Expression Profiles. 
+Breast Cancer Classification Using TCGA Gene Expression Profiles. 
 [Journal name, volume, pages]. DOI: [to be added after publication]
 ```
 
