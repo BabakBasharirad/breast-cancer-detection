@@ -1,11 +1,4 @@
 # Breast Cancer Classification from RNA-Seq Data
-## Impact of Class Imbalance Handling on Machine Learning-Based Breast Cancer Classification Using TCGA Gene Expression Profiles
-
----
-
-## Overview
-
-This repository contains the full implementation of a systematic comparative study evaluating seven class imbalance handling strategies for breast cancer classification using RNA-Seq gene expression data from the TCGA-BRCA cohort. The study employs a Random Forest classifier trained on TPM-based gene expression features, with comprehensive model explainability analysis using MDI, Permutation Importance, and SHAP values.
 
 ---
 
@@ -264,28 +257,7 @@ All results are fully reproducible using `RANDOM_STATE=42`. The following files 
 
 ---
 
-## Citation
 
-If you use this code or results in your research, please cite:
-
-```
-Basharirad, B. (2025). Impact of Class Imbalance Handling on Machine Learning-Based 
-Breast Cancer Classification Using TCGA Gene Expression Profiles. 
-[Journal name, volume, pages]. DOI: [to be added after publication]
-```
-
----
-
-## Author
-
-**Babak Basharirad**  
-Senior Lecturer & Researcher  
-School of CMI, Rotterdam University of Applied Sciences (RUAS)  
-Creating 010 Knowledge Centre  
-
-GitHub: [BabakBasharirad](https://github.com/BabakBasharirad)
-
----
 
 ## License
 
