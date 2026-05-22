@@ -221,6 +221,11 @@ def apply_balancing(
     logger.info("Class distribution AFTER balancing:")
     check_class_balance(y_res, logger)
 
+    # Log post-resampling counts
+    n_tumor  = (y_res == 1).sum()
+    n_normal = (y_res == 0).sum()
+    logger.info(f"  Post-resampling: Total={len(y_res)}, Tumor={n_tumor}, Normal={n_normal}")
+
     return X_res, y_res
 
 

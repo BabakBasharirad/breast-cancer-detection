@@ -93,48 +93,82 @@ def run_cross_validation(
     y_train: pd.Series,
     strategy: str,
 ) -> dict:
-    """
-    Apply a balancing strategy and run stratified k-fold cross-validation
-    on the training set.
-
-    Args:
-        X_train  : Training feature matrix.
-        y_train  : Training labels.
-        strategy : Balancing strategy name.
-
-    Returns:
-        Dictionary of mean and std CV metrics for this strategy.
-    """
+    from sklearn.metrics import confusion_matrix
+    
     logger.info(f"Running {CV_FOLDS}-fold CV for strategy: '{strategy}'...")
 
-    # Apply balancing (on training data only — CV handles splits internally)
     X_bal, y_bal = apply_balancing(X_train, y_train, strategy)
-
-    # Get appropriate class_weight for RF
     class_weight = get_class_weight_param(strategy)
-    model        = build_random_forest(class_weight=class_weight)
-
-    # Stratified K-Fold
+    
     skf = StratifiedKFold(
         n_splits=CV_FOLDS,
         shuffle=True,
         random_state=RANDOM_STATE,
     )
 
-    cv_results = cross_validate(
-        model,
-        X_bal,
-        y_bal,
-        cv=skf,
-        scoring=CV_SCORING,
-        return_train_score=False,
-        n_jobs=-1,
-    )
+    fold_records = []
+    all_scores   = {m: [] for m in CV_SCORING.keys()}
 
-    # Summarize results
+    for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_bal, y_bal), start=1):
+        X_fold_train = X_bal.iloc[train_idx]
+        y_fold_train = y_bal.iloc[train_idx]
+        X_fold_val   = X_bal.iloc[val_idx]
+        y_fold_val   = y_bal.iloc[val_idx]
+
+        model = build_random_forest(class_weight=class_weight)
+        model.fit(X_fold_train, y_fold_train)
+
+        y_pred      = model.predict(X_fold_val)
+        y_prob      = model.predict_proba(X_fold_val)[:, 1]
+
+        tn, fp, fn, tp = confusion_matrix(y_fold_val, y_pred).ravel()
+
+        acc  = accuracy_score(y_fold_val, y_pred)
+        prec = precision_score(y_fold_val, y_pred, zero_division=0)
+        rec  = recall_score(y_fold_val, y_pred, zero_division=0)
+        f1   = f1_score(y_fold_val, y_pred, zero_division=0)
+        auc  = roc_auc_score(y_fold_val, y_prob)
+
+        fold_records.append({
+            "strategy"        : strategy,
+            "fold"            : fold_idx,
+            "total_samples"   : len(y_bal),
+            "train_samples"   : len(y_fold_train),
+            "val_samples"     : len(y_fold_val),
+            "train_tumor"     : int((y_fold_train == 1).sum()),
+            "train_normal"    : int((y_fold_train == 0).sum()),
+            "val_tumor"       : int((y_fold_val == 1).sum()),
+            "val_normal"      : int((y_fold_val == 0).sum()),
+            "TP"              : int(tp),
+            "TN"              : int(tn),
+            "FP"              : int(fp),
+            "FN"              : int(fn),
+            "accuracy"        : round(acc,  4),
+            "precision"       : round(prec, 4),
+            "recall"          : round(rec,  4),
+            "f1"              : round(f1,   4),
+            "roc_auc"         : round(auc,  4),
+        })
+
+        all_scores["accuracy"].append(acc)
+        all_scores["precision"].append(prec)
+        all_scores["recall"].append(rec)
+        all_scores["f1"].append(f1)
+        all_scores["roc_auc"].append(auc)
+
+    # Save per-fold details
+    cv_fold_path = os.path.join(METRICS_DIR, "cv_fold_details.csv")
+    fold_df = pd.DataFrame(fold_records)
+    
+    # Append if file exists, write header only if new
+    write_header = not os.path.exists(cv_fold_path)
+    fold_df.to_csv(cv_fold_path, mode='a', header=write_header, index=False)
+    logger.info(f"  Per-fold details saved to: {cv_fold_path}")
+
+    # Summarize
     summary = {"strategy": strategy}
     for metric in CV_SCORING.keys():
-        scores = cv_results[f"test_{metric}"]
+        scores = all_scores[metric]
         summary[f"{metric}_mean"] = round(float(np.mean(scores)), 4)
         summary[f"{metric}_std"]  = round(float(np.std(scores)),  4)
 
@@ -145,6 +179,7 @@ def run_cross_validation(
     )
 
     return summary
+
 
 
 # -----------------------------------------------------------------------------
@@ -172,6 +207,11 @@ def compare_balancing_strategies(
     logger.info("COMPARING BALANCING STRATEGIES")
     logger.info(f"Strategies: {strategies}")
     logger.info("=" * 60)
+
+    # Remove old fold details file to avoid appending duplicates
+    cv_fold_path = os.path.join(METRICS_DIR, "cv_fold_details.csv")
+    if os.path.exists(cv_fold_path):
+        os.remove(cv_fold_path)
 
     results = []
     for strategy in strategies:

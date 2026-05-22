@@ -31,6 +31,15 @@ from model             import run_model_pipeline
 
 logger = setup_logger("run_training", log_file=os.path.join(config.RESULTS_DIR, "training.log"))
 
+import logging
+logging.getLogger("balancer").addHandler(
+    logging.FileHandler(os.path.join(config.RESULTS_DIR, "training.log"))
+)
+logging.getLogger("model").addHandler(
+    logging.FileHandler(os.path.join(config.RESULTS_DIR, "training.log"))
+)
+
+
 # Paths for saved split datasets
 TRAIN_X_PATH = os.path.join(config.PROCESSED_DIR, "X_train.csv")
 TRAIN_Y_PATH = os.path.join(config.PROCESSED_DIR, "y_train.csv")
