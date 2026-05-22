@@ -2,19 +2,6 @@
 
 ---
 
-## Key Features
-
-- Systematic comparison of **7 class imbalance handling strategies**
-- Rigorous pipeline with **strict train/test separation** to prevent data leakage
-- **5-fold stratified cross-validation** with held-out test set evaluation
-- **Multi-criteria strategy selection** procedure
-- **Permutation test** for statistical significance validation
-- **Model explainability** via MDI, Permutation Importance, and SHAP
-- Full **gene name mapping** from Ensembl IDs for publication-ready figures
-- Fully reproducible — all results, figures, and metrics saved to disk
-
----
-
 ## Dataset
 
 - **Source:** [GDC Portal](https://portal.gdc.cancer.gov/)
@@ -24,19 +11,7 @@
 - **Imbalance ratio:** 9.9:1
 - **Feature:** `tpm_unstranded` (TPM values)
 
-### GDC Query Parameters
 
-| Parameter | Value |
-|-----------|-------|
-| Program | TCGA |
-| Project | TCGA-BRCA |
-| Experimental Strategy | RNA-Seq |
-| Data Category | Transcriptome Profiling |
-| Data Type | Gene Expression Quantification |
-| Data Format | TSV |
-| Access | Open |
-
----
 
 ## Pipeline
 
