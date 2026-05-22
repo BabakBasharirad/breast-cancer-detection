@@ -382,7 +382,7 @@ def plot_combined_roc_curves(
         "smotetomek"   : ((0,(5,1,1,1,1,1)), 2.0),
     }
 
-    fig, ax = plt.subplots(figsize=(10, 7))
+    fig, ax = plt.subplots(figsize=(10, 4))
     sns.set_style(PLOT_STYLE)
 
     for strategy, preds in predictions.items():
@@ -395,7 +395,7 @@ def plot_combined_roc_curves(
                 label=f"{STRATEGY_LABELS.get(strategy, strategy)} (AUC={auc:.3f})")
 
     ax.plot([0, 1], [0, 1], "k--", lw=1.5, label="Random")
-    ax.set_xlim([0, 0.1]); ax.set_ylim([0.95, 1.001])
+    ax.set_xlim([0, 0.1]); ax.set_ylim([0.97, 1.001])
     ax.set_xlabel("False Positive Rate", fontsize=12)
     ax.set_ylabel("True Positive Rate",  fontsize=12)
     ax.set_title("ROC Curves — All Balancing Strategies (Zoomed)", fontsize=13, fontweight="bold")
