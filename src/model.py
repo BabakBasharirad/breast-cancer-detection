@@ -131,8 +131,10 @@ def run_cross_validation(
 
         fold_records.append({
             "strategy"        : strategy,
-            "fold"            : fold_idx,
+            "fold"            : fold_idx,         
             "total_samples"   : len(y_bal),
+            "total_tumor"      : int((y_bal == 1).sum()),
+            "total_normal"     : int((y_bal == 0).sum()),
             "train_samples"   : len(y_fold_train),
             "val_samples"     : len(y_fold_val),
             "train_tumor"     : int((y_fold_train == 1).sum()),
